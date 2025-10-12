@@ -1,17 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 6.16"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6.0"
-    }
-  }
-
-  required_version = ">= 1.2"
-}
 
 provider "aws" {
   region = "eu-west-1"
@@ -59,15 +45,4 @@ resource "aws_db_instance" "recipes-db" {
   password             = random_password.db_password.result
   parameter_group_name = "default.postgres17"
   skip_final_snapshot  = true
-}
-
-# S3 Angular Bucket
-
-resource "aws_s3_bucket" "angular-bucket" {
-  bucket = "tasti-angular-bucket"
-
-  tags = {
-    Name        = "Angular Bucket"
-    Environment = "Dev"
-  }
 }
