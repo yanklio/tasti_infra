@@ -1,48 +1,49 @@
 
-provider "aws" {
-  region = "eu-west-1"
+# Tasti Application Infrastructure
+#
+# This is the root module that orchestrates all infrastructure components.
+
+# Storage Module - S3 buckets for recipes
+module "storage" {
+  source = "./modules/storage"
+
+  project_name        = var.project_name
+  environment         = var.environment
+  recipes_bucket_name = var.recipes_bucket_name
 }
 
-# S3 Recipes Bucket
+# Database Module - RDS PostgreSQL
+module "database" {
+  source = "./modules/database"
 
-resource "aws_s3_bucket" "recipes-bucket" {
-  bucket = "tasti-recipes-bucket"
-
-  tags = {
-    Name        = "Recipes Bucket"
-    Environment = "Dev"
-  }
+  project_name            = var.project_name
+  environment             = var.environment
+  db_name                 = var.db_name
+  db_username             = var.db_username
+  db_allocated_storage    = var.db_allocated_storage
+  db_engine_version       = var.db_engine_version
+  db_instance_class       = var.db_instance_class
+  db_skip_final_snapshot  = var.db_skip_final_snapshot
 }
 
-resource "aws_secretsmanager_secret" "db_passwords" {
-  name        = "tasti-db-passwords"
-  description = "Passwords for TastiDB PostgreSQL database"
+# Backend Module - ECR, IAM, and S3 access
+module "backend" {
+  source = "./modules/backend"
 
-  tags = {
-    Environment = "Dev"
-  }
+  project_name        = var.project_name
+  environment         = var.environment
+  aws_region          = var.aws_region
+  ecr_repo_name       = var.ecr_repo_name
+  recipes_bucket_name = var.recipes_bucket_name
+
+  depends_on = [module.storage]
 }
 
-# Generate a random password
-resource "random_password" "db_password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-}
+# Frontend Module - S3, CloudFront
+module "frontend" {
+  source = "./modules/frontend"
 
-resource "aws_secretsmanager_secret_version" "db_password" {
-  secret_id     = aws_secretsmanager_secret.db_passwords.id
-  secret_string = random_password.db_password.result
-}
-
-resource "aws_db_instance" "recipes-db" {
-  allocated_storage    = 10
-  db_name              = "tastidb"
-  engine               = "postgres"
-  engine_version       = "17"
-  instance_class       = "db.t3.micro"
-  username             = "postgres"
-  password             = random_password.db_password.result
-  parameter_group_name = "default.postgres17"
-  skip_final_snapshot  = true
+  project_name         = var.project_name
+  environment          = var.environment
+  frontend_bucket_name = var.frontend_bucket_name
 }

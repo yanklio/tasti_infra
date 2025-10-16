@@ -1,48 +1,12 @@
-# Global Variables
-
-variable "aws_region" {
-  description = "AWS region for resources"
+variable "project_name" {
+  description = "Project name"
   type        = string
-  default     = "eu-west-1"
 }
 
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "Dev"
 }
-
-variable "project_name" {
-  description = "Project name"
-  type        = string
-  default     = "tasti"
-}
-
-# Backend Variables
-
-variable "ecr_repo_name" {
-  description = "ECR repository name for backend"
-  type        = string
-  default     = "tasti-backend-repo"
-}
-
-# Frontend Variables
-
-variable "frontend_bucket_name" {
-  description = "S3 bucket name for frontend"
-  type        = string
-  default     = "tasti-frontend-bucket"
-}
-
-# Storage Variables
-
-variable "recipes_bucket_name" {
-  description = "S3 bucket name for recipes"
-  type        = string
-  default     = "tasti-recipes-bucket"
-}
-
-# Database Variables
 
 variable "db_name" {
   description = "Database name"
