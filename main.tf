@@ -16,14 +16,14 @@ module "storage" {
 module "database" {
   source = "./modules/database"
 
-  project_name            = var.project_name
-  environment             = var.environment
-  db_name                 = var.db_name
-  db_username             = var.db_username
-  db_allocated_storage    = var.db_allocated_storage
-  db_engine_version       = var.db_engine_version
-  db_instance_class       = var.db_instance_class
-  db_skip_final_snapshot  = var.db_skip_final_snapshot
+  project_name           = var.project_name
+  environment            = var.environment
+  db_name                = var.db_name
+  db_username            = var.db_username
+  db_allocated_storage   = var.db_allocated_storage
+  db_engine_version      = var.db_engine_version
+  db_instance_class      = var.db_instance_class
+  db_skip_final_snapshot = var.db_skip_final_snapshot
 }
 
 # Backend Module - ECR, IAM, and S3 access
@@ -36,7 +36,13 @@ module "backend" {
   ecr_repo_name       = var.ecr_repo_name
   recipes_bucket_name = var.recipes_bucket_name
 
-  depends_on = [module.storage]
+  db_name     = module.database.db_name
+  db_username = module.database.db_username
+  db_password = module.database.db_password
+  db_host     = module.database.db_host
+  db_port     = module.database.db_port
+
+  depends_on = [module.storage, module.database]
 }
 
 # Frontend Module - S3, CloudFront

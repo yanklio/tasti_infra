@@ -37,24 +37,3 @@ resource "aws_db_instance" "recipes-db" {
     Environment = var.environment
   }
 }
-
-resource "aws_secretsmanager_secret" "db-credentials" {
-  name        = "/my-app/database/credentials"
-  description = "Database credentials for ${var.project_name} application"
-
-  tags = {
-    Name        = "Database Credentials"
-    Environment = var.environment
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "db-credentials-version" {
-  secret_id = aws_secretsmanager_secret.db-credentials.id
-  secret_string = jsonencode({
-    "DB_NAME"     = aws_db_instance.recipes-db.db_name
-    "DB_USER"     = aws_db_instance.recipes-db.username
-    "DB_PASSWORD" = aws_db_instance.recipes-db.password
-    "DB_HOST"     = aws_db_instance.recipes-db.address
-    "DB_PORT"     = aws_db_instance.recipes-db.port
-  })
-}

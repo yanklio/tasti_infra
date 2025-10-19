@@ -17,3 +17,13 @@ output "s3_config_secret_arn" {
   value       = aws_secretsmanager_secret.backend-s3-config.arn
   description = "The ARN of the S3 configuration secret"
 }
+
+output "db_credentials_secret_arn" {
+  value       = aws_secretsmanager_secret.db-credentials.arn
+  description = "The ARN of the database credentials secret"
+}
+
+output "backend_env_config_secret_arn" {
+  value       = aws_secretsmanager_secret.backend-env-config.arn
+  description = "The ARN of the complete backend environment configuration secret"
+}

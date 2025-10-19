@@ -41,8 +41,13 @@ output "database_name" {
 }
 
 output "database_credentials_secret_arn" {
-  value       = module.database.db_credentials_secret_arn
+  value       = module.backend.db_credentials_secret_arn
   description = "The ARN of the database credentials secret"
+}
+
+output "backend_env_config_secret_arn" {
+  value       = module.backend.backend_env_config_secret_arn
+  description = "The ARN of the complete backend environment configuration secret"
 }
 
 # Storage Outputs
