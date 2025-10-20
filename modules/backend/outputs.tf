@@ -27,3 +27,8 @@ output "backend_env_config_secret_arn" {
   value       = aws_secretsmanager_secret.backend-env-config.arn
   description = "The ARN of the complete backend environment configuration secret"
 }
+
+output "ecs_security_group_id" {
+  value       = aws_security_group.ecs_tasks.id
+  description = "The ID of the ECS tasks security group"
+}

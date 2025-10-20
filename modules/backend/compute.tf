@@ -14,8 +14,8 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# Get default public subnets only
-data "aws_subnets" "default" {
+# Get default public subnets for NAT Gateway
+data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
@@ -27,7 +27,58 @@ data "aws_subnets" "default" {
   }
 }
 
-# Security Group for ECS Tasks (minimal)
+# Get default private subnets for ECS tasks
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.default.id]
+  }
+
+  filter {
+    name   = "map-public-ip-on-launch"
+    values = ["false"]
+  }
+}
+
+# Elastic IP for NAT Gateway
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "${var.project_name}-nat-eip"
+    Environment = var.environment
+  }
+}
+
+# NAT Gateway in first public subnet
+resource "aws_nat_gateway" "main" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = data.aws_subnets.public.ids[0]
+
+  tags = {
+    Name        = "${var.project_name}-nat-gateway"
+    Environment = var.environment
+  }
+
+  depends_on = [data.aws_vpc.default]
+}
+
+# Get existing private route table
+data "aws_route_table" "private" {
+  filter {
+    name   = "association.subnet-id"
+    values = data.aws_subnets.private.ids
+  }
+}
+
+# Add NAT Gateway route to existing private route table
+resource "aws_route" "private_nat" {
+  route_table_id         = data.aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main.id
+}
+
+# Security Group for ECS Tasks
 resource "aws_security_group" "ecs_tasks" {
   name_prefix = "${var.project_name}-ecs-tasks"
   vpc_id      = data.aws_vpc.default.id
@@ -45,6 +96,22 @@ resource "aws_security_group" "ecs_tasks" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name        = "${var.project_name}-ecs-tasks-sg"
+    Environment = var.environment
+  }
+}
+
+# Security Group Rule: Allow ECS tasks to access RDS default security group
+resource "aws_security_group_rule" "ecs_to_database" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  security_group_id        = "sg-0113c2a3b7cfcc999" # Default VPC security group used by RDS
+  source_security_group_id = aws_security_group.ecs_tasks.id
+  description              = "PostgreSQL access from ECS tasks"
 }
 
 # ECS Task Definition (minimal)
@@ -142,10 +209,15 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = data.aws_subnets.default.ids
+    subnets          = data.aws_subnets.private.ids
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true
+    assign_public_ip = false
   }
+
+  depends_on = [
+    aws_nat_gateway.main,
+    aws_route.private_nat
+  ]
 }
 
 # Get current AWS account ID
