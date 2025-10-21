@@ -33,3 +33,8 @@ variable "backend_domain" {
   type        = string
   default     = ""
 }
+
+variable "backend_api_url" {
+  description = "The URL of the backend API"
+  type        = string
+}

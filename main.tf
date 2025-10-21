@@ -60,6 +60,7 @@ module "frontend" {
   frontend_bucket_name = var.frontend_bucket_name
   domain_name          = var.domain_name
   backend_domain       = var.domain_name != "" ? "api.${var.domain_name}" : ""
+  backend_api_url      = module.backend.application_url
 
   certificate_arn = module.backend.ssl_certificate_arn
   route53_zone_id = module.backend.route53_zone_id
