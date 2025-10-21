@@ -147,6 +147,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "AWS_S3_VERIFY"
           valueFrom = "${aws_secretsmanager_secret.backend-env-config.arn}:AWS_S3_VERIFY::"
+        },
+        {
+          name      = "CORS_ALLOWED_ORIGINS"
+          valueFrom = "${aws_secretsmanager_secret.backend-env-config.arn}:CORS_ALLOWED_ORIGINS::"
+        },
+        {
+          name      = "ALLOWED_HOSTS"
+          valueFrom = "${aws_secretsmanager_secret.backend-env-config.arn}:ALLOWED_HOSTS::"
         }
       ]
 

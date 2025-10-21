@@ -76,5 +76,9 @@ resource "aws_secretsmanager_secret_version" "backend-env-config-version" {
     "AWS_S3_REGION_NAME"      = var.aws_region
     "AWS_DEFAULT_ACL"         = "private"
     "AWS_S3_VERIFY"           = "True"
+
+    # Django CORS and Host Configuration
+    "CORS_ALLOWED_ORIGINS" = var.domain_name != "" ? "https://${var.domain_name}" : "http://localhost:4200,http://127.0.0.1:3000"
+    "ALLOWED_HOSTS"        = var.domain_name != "" ? "api.${var.domain_name},${var.domain_name}" : "*"
   })
 }
