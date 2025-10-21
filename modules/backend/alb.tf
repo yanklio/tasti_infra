@@ -61,7 +61,7 @@ resource "aws_lb_target_group" "backend" {
     healthy_threshold   = 2
     interval            = 30
     matcher             = "200"
-    path                = "/"
+    path                = "/api/v1/health/"
     port                = "traffic-port"
     protocol            = "HTTP"
     timeout             = 5
@@ -257,6 +257,24 @@ resource "aws_lb_listener_rule" "backend_https_allow_referer" {
   }
 }
 
+# HTTPS Listener Rule - Allow ALB health checks
+resource "aws_lb_listener_rule" "backend_https_allow_health_checks" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_https[0].arn
+  priority     = 99
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/v1/health/*", "/api/v1/health/"]
+    }
+  }
+}
+
 # HTTPS Listener Rule - Allow CloudFront health checks and direct API calls from known sources
 resource "aws_lb_listener_rule" "backend_https_allow_cloudfront" {
   count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
@@ -308,6 +326,24 @@ resource "aws_lb_listener" "backend_http_redirect" {
   tags = {
     Name        = "${var.project_name}-http-redirect"
     Environment = var.environment
+  }
+}
+
+# HTTP Redirect Rule - Allow ALB health checks (no redirect for health endpoint)
+resource "aws_lb_listener_rule" "backend_http_allow_health_checks" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_http_redirect[0].arn
+  priority     = 99
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/v1/health/*", "/api/v1/health/"]
+    }
   }
 }
 
