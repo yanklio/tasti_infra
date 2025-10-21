@@ -14,7 +14,7 @@ data "aws_vpc" "default" {
   default = true
 }
 
-# Get default public subnets for NAT Gateway
+# Get public subnets for ALB
 data "aws_subnets" "public" {
   filter {
     name   = "vpc-id"
@@ -27,7 +27,7 @@ data "aws_subnets" "public" {
   }
 }
 
-# Get default private subnets for ECS tasks
+# Get private subnets for ECS tasks (optional - can use public if preferred)
 data "aws_subnets" "private" {
   filter {
     name   = "vpc-id"
@@ -40,54 +40,17 @@ data "aws_subnets" "private" {
   }
 }
 
-# Elastic IP for NAT Gateway
-resource "aws_eip" "nat" {
-  domain = "vpc"
-
-  tags = {
-    Name        = "${var.project_name}-nat-eip"
-    Environment = var.environment
-  }
-}
-
-# NAT Gateway in first public subnet
-resource "aws_nat_gateway" "main" {
-  allocation_id = aws_eip.nat.id
-  subnet_id     = data.aws_subnets.public.ids[0]
-
-  tags = {
-    Name        = "${var.project_name}-nat-gateway"
-    Environment = var.environment
-  }
-
-  depends_on = [data.aws_vpc.default]
-}
-
-# Get existing private route table
-data "aws_route_table" "private" {
-  filter {
-    name   = "association.subnet-id"
-    values = data.aws_subnets.private.ids
-  }
-}
-
-# Add NAT Gateway route to existing private route table
-resource "aws_route" "private_nat" {
-  route_table_id         = data.aws_route_table.private.id
-  destination_cidr_block = "0.0.0.0/0"
-  nat_gateway_id         = aws_nat_gateway.main.id
-}
-
 # Security Group for ECS Tasks
 resource "aws_security_group" "ecs_tasks" {
   name_prefix = "${var.project_name}-ecs-tasks"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "HTTP from ALB"
+    from_port       = 8000
+    to_port         = 8000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
   }
 
   egress {
@@ -114,7 +77,7 @@ resource "aws_security_group_rule" "ecs_to_database" {
   description              = "PostgreSQL access from ECS tasks"
 }
 
-# ECS Task Definition (minimal)
+# ECS Task Definition
 resource "aws_ecs_task_definition" "backend" {
   family                   = "${var.project_name}-backend"
   network_mode             = "awsvpc"
@@ -132,6 +95,7 @@ resource "aws_ecs_task_definition" "backend" {
       portMappings = [
         {
           containerPort = 8000
+          protocol      = "tcp"
         }
       ]
 
@@ -196,11 +160,19 @@ resource "aws_ecs_task_definition" "backend" {
       }
 
       essential = true
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
     }
   ])
 }
 
-# ECS Service (minimal)
+# ECS Service with ALB integration
 resource "aws_ecs_service" "backend" {
   name            = "${var.project_name}-backend"
   cluster         = aws_ecs_cluster.ecs_cluster.id
@@ -209,15 +181,31 @@ resource "aws_ecs_service" "backend" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = data.aws_subnets.private.ids
+    # Use public subnets for simplicity and cost savings
+    # ECS tasks can pull images directly without NAT Gateway
+    subnets          = data.aws_subnets.public.ids
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = false
+    assign_public_ip = true
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8000
   }
 
   depends_on = [
-    aws_nat_gateway.main,
-    aws_route.private_nat
+    aws_lb_listener.backend_http,
+    aws_iam_role_policy_attachment.ecs_execution_role_policy
   ]
+
+  # Enable service discovery (optional)
+  enable_execute_command = true
+
+  tags = {
+    Name        = "${var.project_name}-backend-service"
+    Environment = var.environment
+  }
 }
 
 # Get current AWS account ID

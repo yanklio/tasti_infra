@@ -32,3 +32,43 @@ output "ecs_security_group_id" {
   value       = aws_security_group.ecs_tasks.id
   description = "The ID of the ECS tasks security group"
 }
+
+output "alb_dns_name" {
+  value       = aws_lb.main.dns_name
+  description = "The DNS name of the Application Load Balancer"
+}
+
+output "alb_zone_id" {
+  value       = aws_lb.main.zone_id
+  description = "The zone ID of the Application Load Balancer"
+}
+
+output "alb_arn" {
+  value       = aws_lb.main.arn
+  description = "The ARN of the Application Load Balancer"
+}
+
+output "target_group_arn" {
+  value       = aws_lb_target_group.backend.arn
+  description = "The ARN of the ALB target group"
+}
+
+output "route53_zone_id" {
+  value       = var.domain_name != "" ? aws_route53_zone.main[0].zone_id : null
+  description = "The Route 53 hosted zone ID (if domain is configured)"
+}
+
+output "route53_name_servers" {
+  value       = var.domain_name != "" ? aws_route53_zone.main[0].name_servers : null
+  description = "The Route 53 name servers for the domain (if configured)"
+}
+
+output "ssl_certificate_arn" {
+  value       = var.domain_name != "" ? aws_acm_certificate_validation.backend[0].certificate_arn : null
+  description = "The ARN of the SSL certificate (if domain is configured)"
+}
+
+output "application_url" {
+  value       = var.domain_name != "" ? "https://api.${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+  description = "The URL to access the application"
+}

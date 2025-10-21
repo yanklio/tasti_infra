@@ -79,3 +79,11 @@ variable "db_skip_final_snapshot" {
   type        = bool
   default     = true
 }
+
+# Domain Variables
+
+variable "domain_name" {
+  description = "Domain name for Route 53 and SSL certificate (leave empty to skip)"
+  type        = string
+  default     = "tasti-dev.link"
+}

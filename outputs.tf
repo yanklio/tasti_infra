@@ -61,3 +61,42 @@ output "recipes_bucket_arn" {
   value       = module.storage.recipes_bucket_arn
   description = "The ARN of the recipes S3 bucket"
 }
+
+# ALB and Load Balancer Outputs
+
+output "application_load_balancer_dns" {
+  value       = module.backend.alb_dns_name
+  description = "The DNS name of the Application Load Balancer"
+}
+
+output "application_load_balancer_arn" {
+  value       = module.backend.alb_arn
+  description = "The ARN of the Application Load Balancer"
+}
+
+output "target_group_arn" {
+  value       = module.backend.target_group_arn
+  description = "The ARN of the ALB target group"
+}
+
+# Route 53 and Domain Outputs
+
+output "route53_zone_id" {
+  value       = module.backend.route53_zone_id
+  description = "The Route 53 hosted zone ID (if domain is configured)"
+}
+
+output "route53_name_servers" {
+  value       = module.backend.route53_name_servers
+  description = "The Route 53 name servers for the domain (if configured)"
+}
+
+output "ssl_certificate_arn" {
+  value       = module.backend.ssl_certificate_arn
+  description = "The ARN of the SSL certificate (if domain is configured)"
+}
+
+output "application_url" {
+  value       = module.backend.application_url
+  description = "The URL to access the application (HTTPS if domain configured, HTTP otherwise)"
+}

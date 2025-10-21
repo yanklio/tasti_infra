@@ -35,6 +35,7 @@ module "backend" {
   aws_region          = var.aws_region
   ecr_repo_name       = var.ecr_repo_name
   recipes_bucket_name = var.recipes_bucket_name
+  domain_name         = var.domain_name
 
   db_name     = module.database.db_name
   db_username = module.database.db_username

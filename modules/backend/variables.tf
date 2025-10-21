@@ -48,3 +48,9 @@ variable "db_port" {
   description = "Database port"
   type        = number
 }
+
+variable "domain_name" {
+  description = "Domain name for Route 53 and SSL certificate (leave empty to skip)"
+  type        = string
+  default     = ""
+}
