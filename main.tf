@@ -50,7 +50,17 @@ module "backend" {
 module "frontend" {
   source = "./modules/frontend"
 
+  providers = {
+    aws.us_east_1 = aws.us_east_1
+  }
+
   project_name         = var.project_name
   environment          = var.environment
   frontend_bucket_name = var.frontend_bucket_name
+  domain_name          = var.domain_name
+
+  certificate_arn = module.backend.ssl_certificate_arn
+  route53_zone_id = module.backend.route53_zone_id
+
+  depends_on = [module.backend]
 }

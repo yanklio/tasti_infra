@@ -24,3 +24,17 @@ provider "aws" {
     }
   }
 }
+
+# Provider for CloudFront certificates (must be in us-east-1)
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Project     = "Tasti"
+      ManagedBy   = "Terraform"
+      Environment = var.environment
+    }
+  }
+}
