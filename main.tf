@@ -30,12 +30,13 @@ module "database" {
 module "backend" {
   source = "./modules/backend"
 
-  project_name        = var.project_name
-  environment         = var.environment
-  aws_region          = var.aws_region
-  ecr_repo_name       = var.ecr_repo_name
-  recipes_bucket_name = var.recipes_bucket_name
-  domain_name         = var.domain_name
+  project_name          = var.project_name
+  environment           = var.environment
+  aws_region            = var.aws_region
+  ecr_repo_name         = var.ecr_repo_name
+  recipes_bucket_name   = var.recipes_bucket_name
+  domain_name           = var.domain_name
+  enable_private_access = var.enable_private_access
 
   db_name     = module.database.db_name
   db_username = module.database.db_username
@@ -58,6 +59,7 @@ module "frontend" {
   environment          = var.environment
   frontend_bucket_name = var.frontend_bucket_name
   domain_name          = var.domain_name
+  backend_domain       = var.domain_name != "" ? "api.${var.domain_name}" : ""
 
   certificate_arn = module.backend.ssl_certificate_arn
   route53_zone_id = module.backend.route53_zone_id

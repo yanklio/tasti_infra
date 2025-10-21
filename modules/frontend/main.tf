@@ -48,6 +48,22 @@ resource "aws_cloudfront_distribution" "frontend-distribution" {
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend-oac.id
   }
 
+  # Backend API origin
+  dynamic "origin" {
+    for_each = var.backend_domain != "" ? [1] : []
+    content {
+      domain_name = var.backend_domain
+      origin_id   = "backend-api"
+
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
@@ -65,6 +81,7 @@ resource "aws_cloudfront_distribution" "frontend-distribution" {
 
     forwarded_values {
       query_string = false
+      headers      = ["Origin", "Referer", "User-Agent"]
 
       cookies {
         forward = "none"

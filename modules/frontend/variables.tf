@@ -27,3 +27,9 @@ variable "certificate_arn" {
   description = "ARN of the CloudFront certificate"
   type        = string
 }
+
+variable "backend_domain" {
+  description = "Backend API domain (e.g., api.example.com)"
+  type        = string
+  default     = ""
+}

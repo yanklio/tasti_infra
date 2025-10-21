@@ -54,3 +54,9 @@ variable "domain_name" {
   type        = string
   default     = ""
 }
+
+variable "enable_private_access" {
+  description = "Enable private access mode - only allow requests from frontend domain"
+  type        = bool
+  default     = true
+}

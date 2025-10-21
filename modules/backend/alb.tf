@@ -20,19 +20,19 @@ resource "aws_security_group" "alb" {
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "HTTP"
+    description = "HTTP from CloudFront"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # CloudFront IPs are dynamic, so we'll restrict at listener level
   }
 
   ingress {
-    description = "HTTPS"
+    description = "HTTPS from CloudFront"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["0.0.0.0/0"] # CloudFront IPs are dynamic, so we'll restrict at listener level
   }
 
   egress {
@@ -82,13 +82,40 @@ resource "aws_lb_listener" "backend_http" {
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    type             = var.enable_private_access ? "fixed-response" : "forward"
+    target_group_arn = var.enable_private_access ? null : aws_lb_target_group.backend.arn
+
+    dynamic "fixed_response" {
+      for_each = var.enable_private_access ? [1] : []
+      content {
+        content_type = "text/plain"
+        message_body = "Access Denied: Direct access not allowed"
+        status_code  = "403"
+      }
+    }
   }
 
   tags = {
     Name        = "${var.project_name}-http-listener"
     Environment = var.environment
+  }
+}
+
+# HTTP Listener Rule - Allow all requests when no domain is configured and private access is disabled
+resource "aws_lb_listener_rule" "backend_http_allow_all" {
+  count        = var.domain_name == "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_http[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["*"]
+    }
   }
 }
 
@@ -173,8 +200,17 @@ resource "aws_lb_listener" "backend_https" {
   certificate_arn   = aws_acm_certificate_validation.backend[0].certificate_arn
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
+    type             = var.enable_private_access ? "fixed-response" : "forward"
+    target_group_arn = var.enable_private_access ? null : aws_lb_target_group.backend.arn
+
+    dynamic "fixed_response" {
+      for_each = var.enable_private_access ? [1] : []
+      content {
+        content_type = "text/plain"
+        message_body = "Access Denied: Direct access not allowed"
+        status_code  = "403"
+      }
+    }
   }
 
   tags = {
@@ -183,7 +219,64 @@ resource "aws_lb_listener" "backend_https" {
   }
 }
 
-# Redirect HTTP to HTTPS (when SSL is enabled)
+# HTTPS Listener Rule - Allow requests from frontend domain via Origin header
+resource "aws_lb_listener_rule" "backend_https_allow_frontend" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_https[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    http_header {
+      http_header_name = "Origin"
+      values           = ["https://${var.domain_name}"]
+    }
+  }
+}
+
+# HTTPS Listener Rule - Allow requests with proper referer
+resource "aws_lb_listener_rule" "backend_https_allow_referer" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_https[0].arn
+  priority     = 101
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    http_header {
+      http_header_name = "Referer"
+      values           = ["https://${var.domain_name}/*"]
+    }
+  }
+}
+
+# HTTPS Listener Rule - Allow CloudFront health checks and direct API calls from known sources
+resource "aws_lb_listener_rule" "backend_https_allow_cloudfront" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_https[0].arn
+  priority     = 102
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    http_header {
+      http_header_name = "User-Agent"
+      values           = ["Amazon CloudFront"]
+    }
+  }
+}
+
+# Redirect HTTP to HTTPS (when SSL is enabled) - with origin restrictions
 resource "aws_lb_listener" "backend_http_redirect" {
   count             = var.domain_name != "" ? 1 : 0
   load_balancer_arn = aws_lb.main.arn
@@ -191,6 +284,40 @@ resource "aws_lb_listener" "backend_http_redirect" {
   protocol          = "HTTP"
 
   default_action {
+    type = var.enable_private_access ? "fixed-response" : "redirect"
+
+    dynamic "fixed_response" {
+      for_each = var.enable_private_access ? [1] : []
+      content {
+        content_type = "text/plain"
+        message_body = "Access Denied: Direct access not allowed"
+        status_code  = "403"
+      }
+    }
+
+    dynamic "redirect" {
+      for_each = var.enable_private_access ? [] : [1]
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+  }
+
+  tags = {
+    Name        = "${var.project_name}-http-redirect"
+    Environment = var.environment
+  }
+}
+
+# HTTP Redirect Rule - Allow requests from frontend domain
+resource "aws_lb_listener_rule" "backend_http_redirect_frontend" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_http_redirect[0].arn
+  priority     = 100
+
+  action {
     type = "redirect"
 
     redirect {
@@ -200,8 +327,34 @@ resource "aws_lb_listener" "backend_http_redirect" {
     }
   }
 
-  tags = {
-    Name        = "${var.project_name}-http-redirect"
-    Environment = var.environment
+  condition {
+    http_header {
+      http_header_name = "Origin"
+      values           = ["https://${var.domain_name}"]
+    }
+  }
+}
+
+# HTTP Redirect Rule - Allow requests with proper referer
+resource "aws_lb_listener_rule" "backend_http_redirect_referer" {
+  count        = var.domain_name != "" && var.enable_private_access ? 1 : 0
+  listener_arn = aws_lb_listener.backend_http_redirect[0].arn
+  priority     = 101
+
+  action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+
+  condition {
+    http_header {
+      http_header_name = "Referer"
+      values           = ["https://${var.domain_name}/*"]
+    }
   }
 }
