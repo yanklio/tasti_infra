@@ -96,6 +96,13 @@ resource "aws_cloudfront_distribution" "frontend-distribution" {
     response_page_path = "/index.html"
   }
 
+  # Handle 403 Access Denied errors (common when S3 returns 403 for non-existent paths)
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
   restrictions {
     geo_restriction {
       restriction_type = "none"
