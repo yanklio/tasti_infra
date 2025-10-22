@@ -146,3 +146,36 @@ resource "aws_iam_role_policy_attachment" "ecs_task_s3_policy" {
   role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.backend-s3-policy.arn
 }
+
+# Policy for ECS Exec (connect to containers)
+resource "aws_iam_policy" "ecs_exec_policy" {
+  name        = "${var.project_name}-ecs-exec-policy"
+  description = "Policy for ECS Exec to connect to containers"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssmmessages:CreateControlChannel",
+          "ssmmessages:CreateDataChannel",
+          "ssmmessages:OpenControlChannel",
+          "ssmmessages:OpenDataChannel"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "ECS Exec Policy"
+    Environment = var.environment
+  }
+}
+
+# Attach ECS Exec policy to task role
+resource "aws_iam_role_policy_attachment" "ecs_task_exec_policy" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = aws_iam_policy.ecs_exec_policy.arn
+}
