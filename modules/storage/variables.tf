@@ -12,3 +12,8 @@ variable "recipes_bucket_name" {
   description = "Recipes S3 bucket name"
   type        = string
 }
+
+variable "domain" {
+  description = "Domain name"
+  type        = string
+}

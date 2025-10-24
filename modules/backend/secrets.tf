@@ -79,6 +79,6 @@ resource "aws_secretsmanager_secret_version" "backend-env-config-version" {
 
     # Django CORS and Host Configuration
     "CORS_ALLOWED_ORIGINS" = var.domain_name != "" ? "https://${var.domain_name}" : "http://localhost:4200,http://127.0.0.1:3000"
-    "ALLOWED_HOSTS"        = var.domain_name != "" ? "api.${var.domain_name},${var.domain_name}" : "*"
+    "ALLOWED_HOSTS"        = var.domain_name != "" ? "api.${var.domain_name},${var.domain_name},localhost" : "*"
   })
 }

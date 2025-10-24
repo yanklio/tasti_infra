@@ -10,6 +10,7 @@ module "storage" {
   project_name        = var.project_name
   environment         = var.environment
   recipes_bucket_name = var.recipes_bucket_name
+  domain              = var.domain_name
 }
 
 # Database Module - RDS PostgreSQL

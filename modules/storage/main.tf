@@ -25,3 +25,15 @@ resource "aws_s3_bucket_public_access_block" "recipes-bucket-public-access-block
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+resource "aws_s3_bucket_cors_configuration" "recipes-bucket-cors" {
+  bucket = aws_s3_bucket.recipes-bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD", "PUT", "DELETE", "POST"]
+    allowed_origins = ["https://${var.domain}"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
